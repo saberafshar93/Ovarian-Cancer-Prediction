@@ -298,6 +298,9 @@
             modelPredictions = await model.predict(inputTensor).array();
 
             displayResults();
+            // حالا که پیش‌بینی‌ها محاسبه شده‌اند، صفحه به مرحله 3 می‌رود
+            currentPage = 3;
+            showPage(currentPage);
         }
 
         function displayResults() {
