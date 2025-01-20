@@ -6,8 +6,6 @@
     <title>Ovarian Cancer Prediction App</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/9.4.4/math.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -51,7 +49,6 @@
         .images-container img {
             width: 189px;
             height: 189px;
-            object-fit: cover;
         }
         table {
             width: 100%;
@@ -74,11 +71,6 @@
             text-align: center;
             margin-top: 20px;
         }
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
     </style>
 </head>
 <body>
@@ -97,9 +89,9 @@
             <button onclick="nextPage()">Next</button>
         </div>
         <div class="images-container">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+            <img src="/api/placeholder/189/189" alt="Image 1">
+            <img src="/api/placeholder/189/189" alt="Image 2">
+            <img src="/api/placeholder/189/189" alt="Image 3">
         </div>
         <div class="citation">
             Please cite: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000
@@ -113,9 +105,9 @@
             <button onclick="nextPage()">Next</button>
         </div>
         <div class="images-container">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+            <img src="/api/placeholder/189/189" alt="Image 1">
+            <img src="/api/placeholder/189/189" alt="Image 2">
+            <img src="/api/placeholder/189/189" alt="Image 3">
         </div>
     </div>
 
@@ -125,13 +117,10 @@
         <div class="button-container">
             <button onclick="calculatePredictions()">Next</button>
         </div>
-        <div class="loading" id="loadingIndicator">
-            Processing data and calculating predictions...
-        </div>
         <div class="images-container">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+            <img src="/api/placeholder/189/189" alt="Image 1">
+            <img src="/api/placeholder/189/189" alt="Image 2">
+            <img src="/api/placeholder/189/189" alt="Image 3">
         </div>
     </div>
 
@@ -144,9 +133,9 @@
             <button onclick="window.close()">Exit</button>
         </div>
         <div class="images-container">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
-            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+            <img src="/api/placeholder/189/189" alt="Image 1">
+            <img src="/api/placeholder/189/189" alt="Image 2">
+            <img src="/api/placeholder/189/189" alt="Image 3">
         </div>
     </div>
 
@@ -154,26 +143,6 @@
         let currentPage = 0;
         let patientData = null;
         let modelPredictions = null;
-        let trainingData = null;
-        let trainingLabels = null;
-
-        // Load training data and results at startup
-        async function loadTrainingData() {
-            try {
-                const dataResponse = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/Data.csv');
-                const resultsResponse = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/results.csv');
-                
-                const dataText = await dataResponse.text();
-                const resultsText = await resultsResponse.text();
-
-                trainingData = Papa.parse(dataText, { header: true, dynamicTyping: true }).data;
-                trainingLabels = Papa.parse(resultsText, { header: true, dynamicTyping: true }).data;
-            } catch (error) {
-                console.error('Error loading training data:', error);
-            }
-        }
-
-        loadTrainingData();
 
         function showPage(pageNum) {
             document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
@@ -185,140 +154,111 @@
                 alert('Please upload a file first');
                 return;
             }
-            if (currentPage === 2 && !patientData) {
-                alert('Please edit or approve the data before proceeding.');
-                return;
-            }
             currentPage++;
             showPage(currentPage);
             if (currentPage === 2) {
                 displayData();
             }
-            if (currentPage === 3) {
-                displayResults();
-            }
         }
 
         async function downloadTemplate() {
-            try {
-                const response = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/Temp.csv');
-                const data = await response.text();
-                
-                const blob = new Blob([data], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'patient_template.csv';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            } catch (error) {
-                console.error('Error downloading template:', error);
-            }
+            const template = [
+                ['Patient ID', 'Menopausal', 'CA125', 'HE4', 'Age'],
+                ['1', '0', '0', '0', '0']
+            ];
+            const csv = template.map(row => row.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'patient_template.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
         }
 
         function handleFileUpload(event) {
             const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const fileContent = e.target.result;
-                    if (file.name.endsWith('.csv')) {
-                        parseCSV(fileContent);
-                    } else if (file.name.endsWith('.xlsx')) {
-                        parseExcel(fileContent);
-                    }
-                };
-                reader.readAsText(file);
-            }
-        }
+            if (!file) return;
 
-        function parseCSV(content) {
-            const parsedData = Papa.parse(content, { header: true, dynamicTyping: true }).data;
-            patientData = parsedData;
-            displayData();
-        }
-
-        function parseExcel(content) {
-            const workbook = XLSX.read(content, { type: 'binary' });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const data = XLSX.utils.sheet_to_json(sheet);
-            patientData = data;
-            displayData();
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (file.name.endsWith('.csv')) {
+                    Papa.parse(e.target.result, {
+                        complete: function(results) {
+                            patientData = results.data;
+                        }
+                    });
+                } else {
+                    const workbook = XLSX.read(e.target.result, {type: 'binary'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    patientData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                }
+            };
+            reader.readAsBinaryString(file);
         }
 
         function displayData() {
             if (!patientData) return;
 
             const table = document.createElement('table');
-            const headers = Object.keys(patientData[0]);
-            const headerRow = document.createElement('tr');
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.textContent = header;
-                headerRow.appendChild(th);
-            });
-            table.appendChild(headerRow);
-
-            patientData.forEach((row, rowIndex) => {
+            patientData.forEach((row, i) => {
                 const tr = document.createElement('tr');
-                headers.forEach((header, colIndex) => {
-                    const td = document.createElement('td');
-                    if (row[header] !== undefined) {
-                        const input = document.createElement('input');
-                        input.value = row[header];
-                        input.dataset.row = rowIndex;
-                        input.dataset.col = header;
-                        input.addEventListener('input', (e) => {
-                            patientData[rowIndex][header] = e.target.value;
-                        });
-                        td.appendChild(input);
+                row.forEach((cell, j) => {
+                    const td = i === 0 ? document.createElement('th') : document.createElement('td');
+                    const input = i === 0 ? document.createElement('div') : document.createElement('input');
+                    if (i === 0) {
+                        input.textContent = cell;
+                    } else {
+                        input.type = 'text';
+                        input.value = cell;
+                        input.onchange = (e) => patientData[i][j] = e.target.value;
                     }
+                    td.appendChild(input);
                     tr.appendChild(td);
                 });
                 table.appendChild(tr);
             });
-
             document.getElementById('dataTable').innerHTML = '';
             document.getElementById('dataTable').appendChild(table);
         }
 
         function calculatePredictions() {
-            const inputData = prepareInputData(patientData);
-            // Assuming model is loaded
-            modelPredictions = predictModel(inputData);
-            nextPage();
-        }
-
-        function prepareInputData(data) {
-            return data.map(row => Object.values(row));
-        }
-
-        function predictModel(inputData) {
-            // Dummy prediction logic, replace with actual model
-            return inputData.map(row => row.reduce((sum, value) => sum + Number(value), 0));
+            // Simulated predictions (in real implementation, this would call your ML models)
+            const predictions = {
+                'Logistic Regression': Math.random() > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)',
+                'Decision Tree': Math.random() > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)',
+                'Random Forest': Math.random() > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)',
+                'Support Vector Machine': Math.random() > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)',
+                'Neural Network': Math.random() > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)'
+            };
+            modelPredictions = predictions;
+            displayResults();
+            currentPage++;
+            showPage(currentPage);
         }
 
         function displayResults() {
-            if (modelPredictions) {
-                const resultsDiv = document.getElementById('results');
-                resultsDiv.innerHTML = `
-                    <div><strong>Prediction Results:</strong></div>
-                    <ul>
-                        ${modelPredictions.map((prediction, index) => `<li>Patient ${index + 1}: ${prediction}</li>`).join('')}
-                    </ul>
-                `;
-            }
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = Object.entries(modelPredictions)
+                .map(([model, prediction]) => `<p><strong>${model}:</strong> ${prediction}</p>`)
+                .join('');
         }
 
         function downloadResults() {
-            const blob = new Blob([JSON.stringify(modelPredictions)], { type: 'application/json' });
+            if (!modelPredictions) return;
+
+            let content = 'Ovarian Cancer Prediction Results\n\n';
+            content += Object.entries(modelPredictions)
+                .map(([model, prediction]) => `${model}: ${prediction}`)
+                .join('\n');
+
+            const blob = new Blob([content], { type: 'text/plain' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'prediction_results.json';
+            a.download = 'prediction_results.txt';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -329,7 +269,7 @@
             currentPage = 0;
             patientData = null;
             modelPredictions = null;
-            showPage(currentPage);
+            showPage(0);
         }
     </script>
 </body>
