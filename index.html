@@ -269,126 +269,114 @@
             document.getElementById('dataTable').appendChild(table);
         }
 
-        async function preprocessData(data) {
-            // Convert data to numeric and handle missing values
-            const processedData = {...data};
-            for (let key in processedData) {
+    async function preprocessData(data) {
+        // تبدیل تمام داده‌ها به عددی و مدیریت مقادیر گمشده
+        const processedData = {...data};
+        for (let key in processedData) {
+            if (key !== 'Patient ID' && key !== 'RowNumber') { // نادیده گرفتن ستون‌های غیر عددی
                 if (typeof processedData[key] === 'string') {
                     processedData[key] = parseFloat(processedData[key]);
                 }
                 if (isNaN(processedData[key])) {
                     processedData[key] = 0;
                 }
-            }
-
-            // Log transform for certain features
-            const logFeatures = ['CA125', 'HE4'];
-            logFeatures.forEach(feature => {
-                if (processedData[feature] > 0) {
-                    processedData[feature] = Math.log10(processedData[feature]);
+                // لگاریتم گرفتن از مقادیر مثبت
+                if (processedData[key] > 0) {
+                    processedData[key] = Math.log10(processedData[key]);
                 }
-            });
-
-            return processedData;
-        }
-
-        function standardize(value, mean, std) {
-            return (value - mean) / std;
-        }
-
-        async function calculatePredictions() {
-            document.getElementById('loadingIndicator').style.display = 'block';
-
-            try {
-                // Preprocess patient data
-                const processedPatientData = await Promise.all(
-                    patientData.map(patient => preprocessData(patient))
-                );
-
-                // Calculate predictions using different models
-                const predictions = {
-                    'Logistic Regression': predictLogisticRegression(processedPatientData[0]),
-                    'Decision Tree': predictDecisionTree(processedPatientData[0]),
-                    'Random Forest': predictRandomForest(processedPatientData[0]),
-                    'Support Vector Machine': predictSVM(processedPatientData[0]),
-                    'Neural Network': predictNeuralNetwork(processedPatientData[0])
-                };
-
-                modelPredictions = predictions;
-                displayResults();
-                currentPage++;
-                showPage(currentPage);
-            } catch (error) {
-                console.error('Error calculating predictions:', error);
-                alert('Error calculating predictions. Please try again.');
-            } finally {
-                document.getElementById('loadingIndicator').style.display = 'none';
             }
         }
+        return processedData;
+    }
 
-        function predictLogisticRegression(patientData) {
-            // Simplified logistic regression prediction
-            const features = ['Menopausal', 'CA125', 'HE4', 'Age'];
-            const weights = [0.5, 0.3, 0.4, 0.2]; // These would normally be trained
-            const bias = -0.1;
+    function predictLogisticRegression(patientData) {
+        const features = Object.keys(patientData).filter(key => 
+            key !== 'Patient ID' && key !== 'RowNumber'
+        );
+        
+        // وزن‌های تصادفی برای هر ویژگی
+        const weights = features.map(() => Math.random() * 2 - 1);
+        const bias = -0.1;
 
-            let sum = bias;
-            features.forEach((feature, i) => {
-                sum += patientData[feature] * weights[i];
+        let sum = bias;
+        features.forEach((feature, i) => {
+            sum += patientData[feature] * weights[i];
+        });
+
+        const probability = 1 / (1 + Math.exp(-sum));
+        return probability > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+    }
+
+    function predictDecisionTree(patientData) {
+        let score = 0;
+        const features = Object.keys(patientData).filter(key => 
+            key !== 'Patient ID' && key !== 'RowNumber'
+        );
+        
+        features.forEach(feature => {
+            const value = patientData[feature];
+            if (value > 1.5) score += 1;  // امتیازدهی ساده برای مقادیر بالا
+        });
+
+        return score > features.length/3 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+    }
+
+    function predictRandomForest(patientData) {
+        const features = Object.keys(patientData).filter(key => 
+            key !== 'Patient ID' && key !== 'RowNumber'
+        );
+        
+        let votes = 0;
+        const numberOfTrees = 5;
+        
+        // شبیه‌سازی چندین درخت تصمیم
+        for(let i = 0; i < numberOfTrees; i++) {
+            let treeScore = 0;
+            features.forEach(feature => {
+                const threshold = Math.random(); // آستانه تصادفی برای هر درخت
+                if (patientData[feature] > threshold) treeScore += 1;
             });
-
-            const probability = 1 / (1 + Math.exp(-sum));
-            return probability > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+            if (treeScore > features.length/3) votes += 1;
         }
 
-        // Similar simplified implementations for other models
-        function predictDecisionTree(patientData) {
-            // Simple decision tree based on CA125 and HE4
-            if (patientData.CA125 > 2.5 && patientData.HE4 > 2.0) {
-                return 'Non-benign Ovarian cancer (OC)';
-            }
-            return 'Benign Ovarian Tumors (BOT)';
-        }
+        return votes > numberOfTrees/2 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+    }
 
-        function predictRandomForest(patientData) {
-            // Ensemble of simple decision rules
-            let votes = 0;
-            
-            // Tree 1
-            if (patientData.CA125 > 2.5) votes++;
-            // Tree 2
-            if (patientData.HE4 > 2.0) votes++;
-            // Tree 3
-            if (patientData.Age > 50 && patientData.Menopausal === 1) votes++;
+    function predictSVM(patientData) {
+        const features = Object.keys(patientData).filter(key => 
+            key !== 'Patient ID' && key !== 'RowNumber'
+        );
+        
+        let decision = 0;
+        features.forEach(feature => {
+            decision += patientData[feature] * (Math.random() * 2 - 1); // وزن‌های تصادفی
+        });
 
-            return votes >= 2 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
-        }
+        return decision > 0 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+    }
 
-        function predictSVM(patientData) {
-            // Simplified SVM using a linear decision boundary
-            const decision = patientData.CA125 * 0.4 + patientData.HE4 * 0.6;
-return decision > 2.0 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
-        }
+    function predictNeuralNetwork(patientData) {
+        const features = Object.keys(patientData).filter(key => 
+            key !== 'Patient ID' && key !== 'RowNumber'
+        );
+        
+        const inputValues = features.map(f => patientData[f]);
+        
+        // لایه مخفی با 3 نورون
+        const hiddenLayer = Array(3).fill().map(() => {
+            return math.sum(inputValues.map((value, i) => 
+                value * (Math.random() * 2 - 1)
+            ));
+        });
+        
+        // لایه خروجی
+        const output = math.sum(hiddenLayer.map(h => 
+            h * (Math.random() * 2 - 1)
+        ));
+        
+        return output > 0 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+    }
 
-        function predictNeuralNetwork(patientData) {
-            // Simplified neural network prediction
-            const features = [patientData.Menopausal, patientData.CA125, patientData.HE4, patientData.Age];
-            const weights1 = [
-                [0.2, 0.3, 0.1, 0.4],
-                [0.1, 0.4, 0.2, 0.3]
-            ];
-            const weights2 = [0.6, 0.4];
-            
-            // Hidden layer
-            const hidden = weights1.map(w => {
-                return math.sum(features.map((f, i) => f * w[i]));
-            });
-            
-            // Output layer
-            const output = math.sum(hidden.map((h, i) => h * weights2[i]));
-            
-            return output > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
-        }
 
         function displayResults() {
             const resultsDiv = document.getElementById('results');
