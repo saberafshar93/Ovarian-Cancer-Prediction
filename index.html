@@ -140,6 +140,10 @@
             <input type="file" id="fileInput" accept=".csv,.xlsx" onchange="handleFileUpload(event)">
             <button onclick="nextPage()">Next</button>
         </div>
+        <div class="images-container">
+            <img src="image1.jpg" alt="Image 1">
+            <img src="image2.jpg" alt="Image 2">
+        </div>
     </div>
 
     <div id="page2" class="page">
@@ -301,6 +305,7 @@
                 "Model C": "Non-benign Ovarian cancer (OC)"
             };
             displayResults();
+            nextPage();
         }
 
         function downloadResults() {
