@@ -185,8 +185,15 @@
                 alert('Please upload a file first');
                 return;
             }
+
+            if (currentPage === 2) {
+                calculatePredictions(); // ابتدا پیش‌بینی‌ها محاسبه شوند
+                return; // پیش از رفتن به مرحله 3 صبر می‌کند تا پیش‌بینی‌ها انجام شوند
+            }
+
             currentPage++;
             showPage(currentPage);
+
             if (currentPage === 2) {
                 displayData();
             }
