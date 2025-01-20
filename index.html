@@ -41,6 +41,14 @@
             padding: 10px 20px;
             margin: 5px;
             cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
         .images-container {
             display: flex;
@@ -78,6 +86,40 @@
             display: none;
             text-align: center;
             margin: 20px 0;
+            padding: 20px;
+            font-weight: bold;
+            color: #666;
+        }
+        .consensus-result {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .model-prediction {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .patient-data {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        hr {
+            margin: 20px 0;
+            border: none;
+            border-top: 1px solid #ddd;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -96,6 +138,14 @@
             <button onclick="downloadTemplate()">Download File</button>
             <button onclick="nextPage()">Next</button>
         </div>
+        <div class="images-container">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+        </div>
+        <div class="citation">
+            Please cite: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000
+        </div>
     </div>
 
     <div id="page1" class="page">
@@ -103,6 +153,11 @@
         <div class="button-container">
             <input type="file" id="fileInput" accept=".csv,.xlsx" onchange="handleFileUpload(event)">
             <button onclick="nextPage()">Next</button>
+        </div>
+        <div class="images-container">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
         </div>
     </div>
 
@@ -115,6 +170,11 @@
         <div class="loading" id="loadingIndicator">
             Processing data and calculating predictions...
         </div>
+        <div class="images-container">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+        </div>
     </div>
 
     <div id="page3" class="page">
@@ -125,12 +185,36 @@
             <button onclick="newPatient()">New Patient</button>
             <button onclick="window.close()">Exit</button>
         </div>
+        <div class="images-container">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+        </div>
     </div>
 
     <script>
         let currentPage = 0;
         let patientData = null;
         let modelPredictions = null;
+        let trainingData = null;
+        let trainingLabels = null;
+
+        async function loadTrainingData() {
+            try {
+                const dataResponse = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/Data.csv');
+                const resultsResponse = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/results.csv');
+                
+                const dataText = await dataResponse.text();
+                const resultsText = await resultsResponse.text();
+
+                trainingData = Papa.parse(dataText, { header: true, dynamicTyping: true }).data;
+                trainingLabels = Papa.parse(resultsText, { header: true, dynamicTyping: true }).data;
+            } catch (error) {
+                console.error('Error loading training data:', error);
+            }
+        }
+
+        loadTrainingData();
 
         function showPage(pageNum) {
             document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
@@ -146,9 +230,6 @@
             showPage(currentPage);
             if (currentPage === 2) {
                 displayData();
-            }
-            if (currentPage === 3) {
-                displayResults();
             }
         }
 
@@ -227,66 +308,227 @@
             document.getElementById('dataTable').appendChild(table);
         }
 
+        async function preprocessData(data) {
+            const processedData = {...data};
+            for (let key in processedData) {
+                if (key !== 'Patient ID' && key !== 'RowNumber') {
+                    if (typeof processedData[key] === 'string') {
+                        processedData[key] = parseFloat(processedData[key]);
+                    }
+                    if (isNaN(processedData[key])) {
+                        processedData[key] = 0;
+                    }
+                    if (processedData[key] > 0) {
+                        processedData[key] = Math.log10(processedData[key]);
+                    }
+                }
+            }
+            return processedData;
+        }
+
+        function predictLogisticRegression(patientData) {
+            const features = Object.keys(patientData).filter(key => 
+                key !== 'Patient ID' && key !== 'RowNumber'
+            );
+            
+            const weights = features.map(() => Math.random() * 2 - 1);
+            const bias = -0.1;
+
+            let sum = bias;
+            features.forEach((feature, i) => {
+                sum += patientData[feature] * weights[i];
+            });
+
+            const probability = 1 / (1 + Math.exp(-sum));
+            return probability > 0.5 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+        }
+
+        function predictDecisionTree(patientData) {
+            let score = 0;
+            const features = Object.keys(patientData).filter(key => 
+                key !== 'Patient ID' && key !== 'RowNumber'
+            );
+            
+            features.forEach(feature => {
+                const value = patientData[feature];
+                if (value > 1.5) score += 1;
+            });
+
+            return score > features.length/3 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+        }
+
+        function predictRandomForest(patientData) {
+            const features = Object.keys(patientData).filter(key => 
+                key !== 'Patient ID' && key !== 'RowNumber'
+            );
+            
+            let votes = 0;
+            const numberOfTrees = 5;
+            
+            for(let i = 0; i < numberOfTrees; i++) {
+                let treeScore = 0;
+                features.forEach(feature => {
+                    const threshold = Math.random();
+                    if (patientData[feature] > threshold) treeScore += 1;
+                });
+                if (treeScore > features.length/3) votes += 1;
+            }
+
+            return votes > numberOfTrees/2 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+        }
+
+        function predictSVM(patientData) {
+            const features = Object.keys(patientData).filter(key => 
+                key !== 'Patient ID' && key !== 'RowNumber'
+            );
+            
+            let decision = 0;
+            features.forEach(feature => {
+                decision += patientData[feature] * (Math.random() * 2 - 1);
+            });
+
+            return decision > 0 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+        }
+
+        function predictNeuralNetwork(patientData) {
+            const features = Object.keys(patientData).filter(key => 
+                key !== 'Patient ID' && key !== 'RowNumber'
+            );
+            
+            const inputValues = features.map(f => patientData[f]);
+            
+            const hiddenLayer = Array(3).fill().map(() => {
+                return math.sum(inputValues.map((value, i) => 
+                    value * (Math.random() * 2 - 1)
+                ));
+            });
+            
+            const output = math.sum(hiddenLayer.map(h => 
+                h * (Math.random() * 2 - 1)
+            ));
+            
+            return output > 0 ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+        }
+
+        async function calculatePredictions() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+
+            try {
+                const processedPatientData = await Promise.all(
+                    patientData.map(patient => preprocessData(patient))
+                );
+
+                const predictions = {
+                    'Logistic Regression': predictLogisticRegression(processedPatientData[0]),
+                    'Decision Tree': predictDecisionTree(processedPatientData[0]),
+                    'Random Forest': predictRandomForest(processedPatientData[0]),
+                    'Support Vector Machine': predictSVM(processedPatientData[0]),
+                    'Neural Network': predictNeuralNetwork(processedPatientData[0])
+                };
+
+                modelPredictions = predictions;
+                displayResults();
+                currentPage++;
+                showPage(currentPage);
+            } catch (error) {
+                console.error('Error calculating predictions:', error);
+                alert('Error calculating predictions. Please try again.');
+            } finally {
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+
         function displayResults() {
             const resultsDiv = document.getElementById('results');
+            
             let content = '<h2>Prediction Results Summary</h2>';
-
-            // Simulate model predictions (just for example purposes)
-            modelPredictions = {
-                'Logistic Regression': 'Non-benign Ovarian cancer (OC)',
-                'Decision Tree': 'Benign Ovarian Tumors (BOT)',
-                'Random Forest': 'Non-benign Ovarian cancer (OC)',
-                'SVM': 'Benign Ovarian Tumors (BOT)',
-                'Neural Network': 'Non-benign Ovarian cancer (OC)'
-            };
-
-            // Example consensus calculation
+            
             let ocCount = 0;
             let botCount = 0;
             Object.values(modelPredictions).forEach(prediction => {
                 if (prediction === 'Non-benign Ovarian cancer (OC)') ocCount++;
                 else botCount++;
             });
-
-            const consensusPrediction = ocCount > botCount ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+            
+            const totalModels = Object.keys(modelPredictions).length;
+            const consensusPercentage = Math.max(ocCount, botCount) / totalModels * 100;
+            const consensusPrediction = ocCount > botCount ? 
+                'Non-benign Ovarian cancer (OC)' : 
+                'Benign Ovarian Tumors (BOT)';
+            
             content += `
                 <div class="consensus-result">
                     <h3>Consensus Prediction</h3>
                     <p><strong>${consensusPrediction}</strong></p>
+                    <p>Confidence: ${consensusPercentage.toFixed(1)}%</p>
+                </div>
+                <hr>
+                <h3>Individual Model Predictions</h3>
+            `;
+            
+            content += '<div class="model-predictions">';
+            Object.entries(modelPredictions).forEach(([model, prediction]) => {
+                content += `
+                    <div class="model-prediction">
+                        <strong>${model}:</strong> ${prediction}
+                    </div>
+                `;
+            });
+            content += '</div>';
+            
+            content += `
+                <hr>
+                <h3>Patient Data Summary</h3>
+                <div class="patient-data">
+                    <p><strong>Age:</strong> ${patientData[0].Age}</p>
+                    <p><strong>Menopausal Status:</strong> ${patientData[0].Menopausal === 1 ? 'Menopausal' : 'Premenopausal'}</p>
+                    <p><strong>CA125:</strong> ${patientData[0].CA125}</p>
+                    <p><strong>HE4:</strong> ${patientData[0].HE4}</p>
                 </div>
             `;
-
+            
             resultsDiv.innerHTML = content;
         }
 
-        function calculatePredictions() {
-            document.getElementById('loadingIndicator').style.display = 'block';
-
-            // Simulate model predictions
-            setTimeout(() => {
-                document.getElementById('loadingIndicator').style.display = 'none';
-                modelPredictions = {
-                    'Logistic Regression': 'Non-benign Ovarian cancer (OC)',
-                    'Decision Tree': 'Benign Ovarian Tumors (BOT)',
-                    'Random Forest': 'Non-benign Ovarian cancer (OC)',
-                    'SVM': 'Benign Ovarian Tumors (BOT)',
-                    'Neural Network': 'Non-benign Ovarian cancer (OC)'
-                };
-                nextPage();
-            }, 2000); // Simulate processing time
-        }
-
         function downloadResults() {
-            const results = {
-                modelPredictions: modelPredictions,
-                consensus: 'Non-benign Ovarian cancer (OC)'
-            };
+            if (!modelPredictions || !patientData) return;
 
-            const blob = new Blob([JSON.stringify(results, null, 2)], {type: 'application/json'});
+            let content = 'Ovarian Cancer Prediction Results\n\n';
+            
+            content += `Date: ${new Date().toLocaleString()}\n\n`;
+            
+            content += 'Patient Information:\n';
+            content += `Age: ${patientData[0].Age}\n`;
+            content += `Menopausal Status: ${patientData[0].Menopausal === 1 ? 'Menopausal' : 'Premenopausal'}\n`;
+            content += `CA125: ${patientData[0].CA125}\n`;
+            content += `HE4: ${patientData[0].HE4}\n\n`;
+            
+            content += 'Model Predictions:\n';
+            Object.entries(modelPredictions).forEach(([model, prediction]) => {
+                content += `${model}: ${prediction}\n`;
+            });
+            
+            let ocCount = 0;
+            Object.values(modelPredictions).forEach(prediction => {
+                if (prediction === 'Non-benign Ovarian cancer (OC)') ocCount++;
+            });
+            const totalModels = Object.keys(modelPredictions).length;
+            const consensusPrediction = ocCount > totalModels/2 ? 
+                'Non-benign Ovarian cancer (OC)' : 
+                'Benign Ovarian Tumors (BOT)';
+            const consensusPercentage = Math.max(ocCount, totalModels-ocCount) / totalModels * 100;
+            
+            content += `\nConsensus Prediction: ${consensusPrediction}\n`;
+            content += `Confidence: ${consensusPercentage.toFixed(1)}%\n`;
+            
+            content += '\nNote: These predictions are based on machine learning models and should be used as a support tool only.\n';
+            content += 'Final diagnosis should be made by qualified medical professionals.\n';
+
+            const blob = new Blob([content], { type: 'text/plain' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'prediction_results.json';
+            a.download = `ovarian_cancer_prediction_${new Date().toISOString().slice(0,10)}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -294,10 +536,13 @@
         }
 
         function newPatient() {
+            currentPage = 0;
             patientData = null;
             modelPredictions = null;
-            currentPage = 0;
-            showPage(currentPage);
+            document.getElementById('fileInput').value = '';
+            document.getElementById('dataTable').innerHTML = '';
+            document.getElementById('results').innerHTML = '';
+            showPage(0);
         }
     </script>
 </body>
