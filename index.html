@@ -138,6 +138,7 @@
     <div id="page3" class="page">
         <div class="header">STEP 3: RESULTS</div>
         <div id="results" class="results"></div>
+        <div id="summary"></div>
         <div class="button-container">
             <button onclick="downloadResults()">Download Results</button>
             <button onclick="newPatient()">New Patient</button>
@@ -157,7 +158,6 @@
         let trainingData = null;
         let trainingLabels = null;
 
-        // Load training data and results at startup
         async function loadTrainingData() {
             try {
                 const dataResponse = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/Data.csv');
@@ -301,12 +301,32 @@
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = '';
 
+            let positiveCount = 0;
+            let negativeCount = 0;
             modelPredictions.forEach((prediction, index) => {
-                const resultText = `Patient ${index + 1}: ${prediction[0] >= 0.5 ? 'Positive' : 'Negative'} (Prediction Confidence: ${Math.round(prediction[0] * 100)}%)`;
+                const resultText = `Patient ${index + 1}: ${prediction[0] >= 0.5 ? 'Positive' : 'Negative'} (Confidence: ${Math.round(prediction[0] * 100)}%)`;
                 const resultDiv = document.createElement('div');
                 resultDiv.innerText = resultText;
                 resultsContainer.appendChild(resultDiv);
+
+                if (prediction[0] >= 0.5) {
+                    positiveCount++;
+                } else {
+                    negativeCount++;
+                }
             });
+
+            // Summary Percentages
+            const total = modelPredictions.length;
+            const positivePercentage = Math.round((positiveCount / total) * 100);
+            const negativePercentage = 100 - positivePercentage;
+
+            const summary = `
+                Total Predictions: ${total}\n
+                Positive Predictions: ${positiveCount} (${positivePercentage}%)\n
+                Negative Predictions: ${negativeCount} (${negativePercentage}%)
+            `;
+            document.getElementById('summary').innerText = summary;
 
             document.getElementById('loadingIndicator').style.display = 'none';
         }
