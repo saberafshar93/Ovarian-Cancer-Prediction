@@ -185,17 +185,17 @@
                 alert('Please upload a file first');
                 return;
             }
-
-            if (currentPage === 2) {
-                calculatePredictions(); // ابتدا پیش‌بینی‌ها محاسبه شوند
-                return; // پیش از رفتن به مرحله 3 صبر می‌کند تا پیش‌بینی‌ها انجام شوند
+            if (currentPage === 2 && !patientData) {
+                alert('Please edit or approve the data before proceeding.');
+                return;
             }
-
             currentPage++;
             showPage(currentPage);
-
             if (currentPage === 2) {
                 displayData();
+            }
+            if (currentPage === 3) {
+                displayResults();
             }
         }
 
@@ -215,123 +215,110 @@
                 window.URL.revokeObjectURL(url);
             } catch (error) {
                 console.error('Error downloading template:', error);
-                alert('Error downloading template file. Please try again.');
             }
         }
 
         function handleFileUpload(event) {
             const file = event.target.files[0];
-            if (!file) return;
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const fileContent = e.target.result;
+                    if (file.name.endsWith('.csv')) {
+                        parseCSV(fileContent);
+                    } else if (file.name.endsWith('.xlsx')) {
+                        parseExcel(fileContent);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                if (file.name.endsWith('.csv')) {
-                    Papa.parse(e.target.result, {
-                        header: true,
-                        dynamicTyping: true,
-                        complete: function(results) {
-                            patientData = results.data;
-                            displayData();
-                        },
-                        error: function(error) {
-                            alert('Error parsing CSV file: ' + error.message);
-                        }
-                    });
-                } else if (file.name.endsWith('.xlsx')) {
-                    const workbook = XLSX.read(e.target.result, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    patientData = XLSX.utils.sheet_to_json(sheet);
-                    displayData();
-                }
-            };
-            reader.readAsText(file);
+        function parseCSV(content) {
+            const parsedData = Papa.parse(content, { header: true, dynamicTyping: true }).data;
+            patientData = parsedData;
+            displayData();
+        }
+
+        function parseExcel(content) {
+            const workbook = XLSX.read(content, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(sheet);
+            patientData = data;
+            displayData();
         }
 
         function displayData() {
             if (!patientData) return;
 
             const table = document.createElement('table');
+            const headers = Object.keys(patientData[0]);
             const headerRow = document.createElement('tr');
-            Object.keys(patientData[0]).forEach(column => {
+            headers.forEach(header => {
                 const th = document.createElement('th');
-                th.innerText = column;
+                th.textContent = header;
                 headerRow.appendChild(th);
             });
             table.appendChild(headerRow);
 
-            patientData.forEach(row => {
-                const rowElement = document.createElement('tr');
-                Object.values(row).forEach(value => {
+            patientData.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                headers.forEach((header, colIndex) => {
                     const td = document.createElement('td');
-                    td.innerText = value;
-                    rowElement.appendChild(td);
+                    if (row[header] !== undefined) {
+                        const input = document.createElement('input');
+                        input.value = row[header];
+                        input.dataset.row = rowIndex;
+                        input.dataset.col = header;
+                        input.addEventListener('input', (e) => {
+                            patientData[rowIndex][header] = e.target.value;
+                        });
+                        td.appendChild(input);
+                    }
+                    tr.appendChild(td);
                 });
-                table.appendChild(rowElement);
+                table.appendChild(tr);
             });
 
             document.getElementById('dataTable').innerHTML = '';
             document.getElementById('dataTable').appendChild(table);
         }
 
-        async function calculatePredictions() {
-            if (!patientData || !trainingData || !trainingLabels) return;
+        function calculatePredictions() {
+            const inputData = prepareInputData(patientData);
+            // Assuming model is loaded
+            modelPredictions = predictModel(inputData);
+            nextPage();
+        }
 
-            document.getElementById('loadingIndicator').style.display = 'block';
+        function prepareInputData(data) {
+            return data.map(row => Object.values(row));
+        }
 
-            const trainingFeatures = trainingData.map(row => Object.values(row));
-            const trainingLabelsValues = trainingLabels.map(row => row.Result);
-            const model = await tf.sequential();
-
-            model.add(tf.layers.dense({ units: 32, activation: 'relu', inputShape: [trainingFeatures[0].length] }));
-            model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
-            model.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
-
-            model.compile({ optimizer: 'adam', loss: 'binaryCrossentropy', metrics: ['accuracy'] });
-
-            const xs = tf.tensor2d(trainingFeatures);
-            const ys = tf.tensor2d(trainingLabelsValues, [trainingLabelsValues.length, 1]);
-
-            await model.fit(xs, ys, { epochs: 50 });
-
-            const inputData = patientData.map(row => Object.values(row));
-            const inputTensor = tf.tensor2d(inputData);
-            modelPredictions = await model.predict(inputTensor).array();
-
-            displayResults();
-            // حالا که پیش‌بینی‌ها محاسبه شده‌اند، صفحه به مرحله 3 می‌رود
-            currentPage = 3;
-            showPage(currentPage);
+        function predictModel(inputData) {
+            // Dummy prediction logic, replace with actual model
+            return inputData.map(row => row.reduce((sum, value) => sum + Number(value), 0));
         }
 
         function displayResults() {
-            if (!modelPredictions) return;
-
-            const resultsContainer = document.getElementById('results');
-            resultsContainer.innerHTML = '';
-
-            modelPredictions.forEach((prediction, index) => {
-                const resultText = `Patient ${index + 1}: ${prediction[0] >= 0.5 ? 'Positive' : 'Negative'} (Prediction Confidence: ${Math.round(prediction[0] * 100)}%)`;
-                const resultDiv = document.createElement('div');
-                resultDiv.innerText = resultText;
-                resultsContainer.appendChild(resultDiv);
-            });
-
-            document.getElementById('loadingIndicator').style.display = 'none';
+            if (modelPredictions) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <div><strong>Prediction Results:</strong></div>
+                    <ul>
+                        ${modelPredictions.map((prediction, index) => `<li>Patient ${index + 1}: ${prediction}</li>`).join('')}
+                    </ul>
+                `;
+            }
         }
 
         function downloadResults() {
-            const results = modelPredictions.map((prediction, index) => ({
-                Patient: index + 1,
-                Prediction: prediction[0] >= 0.5 ? 'Positive' : 'Negative',
-                Confidence: Math.round(prediction[0] * 100) + '%',
-            }));
-
-            const csv = Papa.unparse(results);
-            const blob = new Blob([csv], { type: 'text/csv' });
+            const blob = new Blob([JSON.stringify(modelPredictions)], { type: 'application/json' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'patient_results.csv';
+            a.download = 'prediction_results.json';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -339,9 +326,9 @@
         }
 
         function newPatient() {
+            currentPage = 0;
             patientData = null;
             modelPredictions = null;
-            currentPage = 0;
             showPage(currentPage);
         }
     </script>
