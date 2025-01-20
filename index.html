@@ -291,6 +291,8 @@
             modelPredictions = await model.predict(inputTensor).array();
 
             displayResults();
+            currentPage++; // Move to the results page after predictions are calculated
+            showPage(currentPage);
         }
 
         function displayResults() {
