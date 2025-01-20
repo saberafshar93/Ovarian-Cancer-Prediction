@@ -69,51 +69,15 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        .citation {
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+        }
         .loading {
             display: none;
             text-align: center;
             margin: 20px 0;
-        }
-        .consensus-result {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        .model-prediction {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-        .patient-data {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-        }
-        hr {
-            margin: 20px 0;
-            border: none;
-            border-top: 1px solid #ddd;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
         }
     </style>
 </head>
@@ -122,7 +86,7 @@
         <div class="header">STEP 0: DOWNLOAD FILE</div>
         <div class="instructions">
             + Step 0: Download the Excel (CSV) file below, enter your patient's lab data into it, and save the file.
-            * Attention !!! For the menopausal result: enter 0 for Premenopausal or 1 for Menopausal !!!
+            * Attention !!! For the menopausal result: enter 0 for Premenopausal or 1 for Menopausal !!! 
             * After saving, click the Next button.
             + Step 1: Upload the file (The results of the patient that you saved in step 0 in CSV).
             + Step 2: Edit or Approve the data.
@@ -131,6 +95,14 @@
         <div class="button-container">
             <button onclick="downloadTemplate()">Download File</button>
             <button onclick="nextPage()">Next</button>
+        </div>
+        <div class="images-container">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+        </div>
+        <div class="citation">
+            Please cite: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000
         </div>
     </div>
 
@@ -141,8 +113,9 @@
             <button onclick="nextPage()">Next</button>
         </div>
         <div class="images-container">
-            <img src="image1.jpg" alt="Image 1">
-            <img src="image2.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
         </div>
     </div>
 
@@ -155,6 +128,11 @@
         <div class="loading" id="loadingIndicator">
             Processing data and calculating predictions...
         </div>
+        <div class="images-container">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+        </div>
     </div>
 
     <div id="page3" class="page">
@@ -165,12 +143,37 @@
             <button onclick="newPatient()">New Patient</button>
             <button onclick="window.close()">Exit</button>
         </div>
+        <div class="images-container">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%202.jpg" alt="Image 2">
+            <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%203.jpg" alt="Image 3">
+        </div>
     </div>
 
     <script>
         let currentPage = 0;
         let patientData = null;
         let modelPredictions = null;
+        let trainingData = null;
+        let trainingLabels = null;
+
+        // Load training data and results at startup
+        async function loadTrainingData() {
+            try {
+                const dataResponse = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/Data.csv');
+                const resultsResponse = await fetch('https://raw.githubusercontent.com/saberafshar93/sa/main/results.csv');
+                
+                const dataText = await dataResponse.text();
+                const resultsText = await resultsResponse.text();
+
+                trainingData = Papa.parse(dataText, { header: true, dynamicTyping: true }).data;
+                trainingLabels = Papa.parse(resultsText, { header: true, dynamicTyping: true }).data;
+            } catch (error) {
+                console.error('Error loading training data:', error);
+            }
+        }
+
+        loadTrainingData();
 
         function showPage(pageNum) {
             document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
@@ -221,99 +224,104 @@
                         dynamicTyping: true,
                         complete: function(results) {
                             patientData = results.data;
+                            displayData();
+                        },
+                        error: function(error) {
+                            alert('Error parsing CSV file: ' + error.message);
                         }
                     });
-                } else {
-                    const workbook = XLSX.read(e.target.result, {type: 'binary'});
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    patientData = XLSX.utils.sheet_to_json(firstSheet);
+                } else if (file.name.endsWith('.xlsx')) {
+                    const workbook = XLSX.read(e.target.result, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    patientData = XLSX.utils.sheet_to_json(sheet);
+                    displayData();
                 }
             };
-            reader.readAsBinaryString(file);
+            reader.readAsText(file);
         }
 
         function displayData() {
             if (!patientData) return;
 
             const table = document.createElement('table');
-            const headers = Object.keys(patientData[0]);
-            
             const headerRow = document.createElement('tr');
-            headers.forEach(header => {
+            Object.keys(patientData[0]).forEach(column => {
                 const th = document.createElement('th');
-                th.textContent = header;
+                th.innerText = column;
                 headerRow.appendChild(th);
             });
             table.appendChild(headerRow);
 
             patientData.forEach(row => {
-                const tr = document.createElement('tr');
-                headers.forEach(header => {
+                const rowElement = document.createElement('tr');
+                Object.values(row).forEach(value => {
                     const td = document.createElement('td');
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = row[header];
-                    input.onchange = (e) => row[header] = e.target.value;
-                    td.appendChild(input);
-                    tr.appendChild(td);
+                    td.innerText = value;
+                    rowElement.appendChild(td);
                 });
-                table.appendChild(tr);
+                table.appendChild(rowElement);
             });
 
             document.getElementById('dataTable').innerHTML = '';
             document.getElementById('dataTable').appendChild(table);
         }
 
-        function displayResults() {
-            const resultsDiv = document.getElementById('results');
-            let content = '<h2>Prediction Results Summary</h2>';
+        async function calculatePredictions() {
+            if (!patientData || !trainingData || !trainingLabels) return;
 
-            let ocCount = 0;
-            let botCount = 0;
-            Object.values(modelPredictions).forEach(prediction => {
-                if (prediction === 'Non-benign Ovarian cancer (OC)') ocCount++;
-                else botCount++;
-            });
+            document.getElementById('loadingIndicator').style.display = 'block';
 
-            const totalModels = Object.keys(modelPredictions).length;
-            const consensusPercentage = Math.max(ocCount, botCount) / totalModels * 100;
-            const consensusPrediction = ocCount > botCount ? 'Non-benign Ovarian cancer (OC)' : 'Benign Ovarian Tumors (BOT)';
+            const trainingFeatures = trainingData.map(row => Object.values(row));
+            const trainingLabelsValues = trainingLabels.map(row => row.Result);
+            const model = await tf.sequential();
 
-            content += `
-                <div class="consensus-result">
-                    <h3>Consensus Prediction: ${consensusPrediction}</h3>
-                    <p>Consensus accuracy: ${consensusPercentage.toFixed(2)}%</p>
-                </div>
-            `;
+            model.add(tf.layers.dense({ units: 32, activation: 'relu', inputShape: [trainingFeatures[0].length] }));
+            model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+            model.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
 
-            Object.keys(modelPredictions).forEach(model => {
-                content += `
-                    <div class="model-prediction">
-                        <strong>${model}:</strong> ${modelPredictions[model]}
-                    </div>
-                `;
-            });
+            model.compile({ optimizer: 'adam', loss: 'binaryCrossentropy', metrics: ['accuracy'] });
 
-            resultsDiv.innerHTML = content;
+            const xs = tf.tensor2d(trainingFeatures);
+            const ys = tf.tensor2d(trainingLabelsValues, [trainingLabelsValues.length, 1]);
+
+            await model.fit(xs, ys, { epochs: 50 });
+
+            const inputData = patientData.map(row => Object.values(row));
+            const inputTensor = tf.tensor2d(inputData);
+            modelPredictions = await model.predict(inputTensor).array();
+
+            displayResults();
         }
 
-        function calculatePredictions() {
-            // Placeholder for prediction calculation logic
-            modelPredictions = {
-                "Model A": "Non-benign Ovarian cancer (OC)",
-                "Model B": "Benign Ovarian Tumors (BOT)",
-                "Model C": "Non-benign Ovarian cancer (OC)"
-            };
-            displayResults();
-            nextPage();
+        function displayResults() {
+            if (!modelPredictions) return;
+
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+
+            modelPredictions.forEach((prediction, index) => {
+                const resultText = `Patient ${index + 1}: ${prediction[0] >= 0.5 ? 'Positive' : 'Negative'} (Prediction Confidence: ${Math.round(prediction[0] * 100)}%)`;
+                const resultDiv = document.createElement('div');
+                resultDiv.innerText = resultText;
+                resultsContainer.appendChild(resultDiv);
+            });
+
+            document.getElementById('loadingIndicator').style.display = 'none';
         }
 
         function downloadResults() {
-            const blob = new Blob([JSON.stringify(modelPredictions)], { type: 'application/json' });
+            const results = modelPredictions.map((prediction, index) => ({
+                Patient: index + 1,
+                Prediction: prediction[0] >= 0.5 ? 'Positive' : 'Negative',
+                Confidence: Math.round(prediction[0] * 100) + '%',
+            }));
+
+            const csv = Papa.unparse(results);
+            const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'patient_results.json';
+            a.download = 'patient_results.csv';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
