@@ -153,6 +153,7 @@
         <div class="button-container">
             <input type="file" id="fileInput" accept=".csv,.xlsx" onchange="handleFileUpload(event)">
             <button onclick="nextPage()">Next</button>
+            <button onclick="autoUploadTemplate()" style="width: 220px;">Next (Manual data entry)</button>
         </div>
         <div class="images-container">
             <img src="https://raw.githubusercontent.com/saberafshar93/sa/refs/heads/main/Image%201.jpg" alt="Image 1">
@@ -230,6 +231,35 @@
             showPage(currentPage);
             if (currentPage === 2) {
                 displayData();
+            }
+        }
+
+        async function autoUploadTemplate() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/saberafshar93/Ovarian-Cancer-Prediction/main/Temp.csv');
+                const data = await response.text();
+                
+                // Simulate file upload
+                const blob = new Blob([data], { type: 'text/csv' });
+                const file = new File([blob], 'Temp.csv', { type: 'text/csv' });
+
+                // Parse the file and update patientData
+                Papa.parse(data, {
+                    header: true,
+                    dynamicTyping: true,
+                    complete: function(results) {
+                        patientData = results.data;
+                        // Move to the next page
+                        currentPage++;
+                        showPage(currentPage);
+                        if (currentPage === 2) {
+                            displayData();
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error auto-uploading template:', error);
+                alert('Error auto-uploading template. Please try again.');
             }
         }
 
