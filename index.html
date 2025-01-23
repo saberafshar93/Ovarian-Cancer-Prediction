@@ -473,6 +473,15 @@
             
             let content = '<h2>Prediction Results Summary</h2>';
             
+            // Add Random Forest result with accuracy
+            const randomForestResult = modelPredictions['Random Forest'];
+            content += `
+                <div class="consensus-result">
+                    <h3>Random Forest (Acc=91%):</h3>
+                    <p><strong>${randomForestResult}</strong></p>
+                </div>
+            `;
+            
             let ocCount = 0;
             let botCount = 0;
             Object.values(modelPredictions).forEach(prediction => {
